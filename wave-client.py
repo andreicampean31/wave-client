@@ -1,67 +1,96 @@
-import threading
-from threading import Thread
-import time
-from serial import Serial
 import RPi.GPIO as GPIO
-from datetime import datetime
+import serial
+import time
 import urllib.request
+import concurrent.futures
 
-class input_sensor:
-    def __init__(self, input_pin):
-        self.pin = input_pin
+class SendData:
+    def __init__(self, input_pins, port, baud_rate, url):
+        self.pins = input_pins
+        self.domain_url = url
         GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.pins, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        self.cod_activ = {
+            'L1': '',
+            'L2': '',
+            'L3': ''
+        }
+        #port = port #'/dev/ttyACM0'
+        #baud = baud_rate #9600
+        self.serial = serial.Serial(port, baud_rate)
+        self.barcode_data = {
+            'id_linie': '',
+            'cod_placa': ''
+        }
 
-    def read_sensor(self):
-        if(GPIO.input(self.pin) == True):
-            time.sleep(1)
-            if(GPIO.input(self.pin) != True):
-                return "1 " 
-            else:
-                return "0! "
+    def readSensorInput(self, input_pin):
+        if GPIO.input(input_pin):
+            time.sleep(0.1)
+            return "lipsa"
         else:
-            return "0 "
-
-
-
-class barcode_scanner:
-    def __init__(self):
-        port = '/dev/ttyACM0'
-        baud = 9600
-        self.serial_port = serial.Serial(port, baud)
-        self.thread_running = True
-        self.exit_event = threading.Event()
-        self.reading = ''
-        url = 'http://localhost/'
-        
-
-    def insert_DB(self, prezenta_obiect):
-        while self.thread_running:
-            if(prezenta_obiect == "0 "):
-                
-                print(prezenta_obiect + self.reading)
+            time.sleep(0.1)
+            if(GPIO.input(input_pin)):
+                return "obiect"
             else:
-                print(prezenta_obiect + self.reading)
-            time.sleep(1)
+                return "stationare"
 
+    def splitBarcode(self, barcode):
+        i=5
+        cod_placa = ''
+        while i<len(barcode):
+            cod_placa = cod_placa + barcode[i]
+            i+=1
+        data = {
+            'id_linie': barcode[1],
+            'cod_placa': cod_placa
+        }    
+        return data
+        
+    def readBarcode(self):
+        barcode_read = self.serial.readline().decode("utf-8")
+        self.barcode_data = self.splitBarcode(barcode_read)
+        if self.barcode_data['id_linie'] == '1':
+            self.cod_activ['L1'] = self.barcode_data['cod_placa']
+        elif self.barcode_data['id_linie'] == '2':
+            self.cod_activ['L2'] = self.barcode_data['cod_placa']
+        elif self.barcode_data['id_linie'] == '3':
+            self.cod_activ['L3'] = self.barcode_data['cod_placa']
 
-    def take_input(self, ser):
-        self.reading = ser.readline().decode("utf-8")
+    
+    def sendDataToWeb(self):
+        if(self.serial.inWaiting()>0):
+            self.readBarcode()
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            t1 = executor.submit(self.readSensorInput, self.pins[0])
+            t2 = executor.submit(self.readSensorInput, self.pins[1])
+            #t3 = executor.submit(self.readSensorInput, self.pins[2])
 
-    def run(self, prezenta_obiect):
-        self.thread_running = True
-        t1 = Thread(target=self.insert_DB, args=[prezenta_obiect])
-        t2 = Thread(target=self.take_input, args=[self.serial_port])
-        t1.start()
-        t2.start()
-        t2.join()  # interpreter will wait until your process get completed or terminated
-        self.thread_running = False
+        sending_data = {
+            'L1': {
+                'prezenta_obiect': t1.result(),
+                'cod_placa': self.cod_activ['L1'],
+                'id_linie': '1'
+            },
+            'L2': {
+                'prezenta_obiect': t2.result(),
+                'cod_placa': self.cod_activ['L2'],
+                'id_linie': '2'
+            } 
+            #'L3': t3.result()
+        }
+        
+        print(self.barcode_data)
+        #print(self.cod_activ)
+        for i in sending_data:
+            print(sending_data[i])
 
+        for i in sending_data:
+            if sending_data[i]['prezenta_obiect'] == 'obiect':
+                url =  self.domain_url + sending_data[i]['id_linie'] + '&' + sending_data[i]['cod_placa']
+                print(url)
+                urllib.request.urlopen(url)
 
-        # print('The end')
-
-x = barcode_scanner()
-y = input_sensor(12)
+x = SendData([11,12], '/dev/ttyACM0', 9600, 'http://192.168.1.4:8000/insert_data/')
 while 1:
-    x.run(y.read_sensor())
-    time.sleep(1)
+    x.sendDataToWeb()
