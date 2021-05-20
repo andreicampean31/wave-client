@@ -3,7 +3,7 @@ import serial
 import time
 import urllib.request
 import concurrent.futures
-import I2C_LCD_driver
+#import I2C_LCD_driver
 import sys
 import datetime
 
@@ -12,7 +12,7 @@ class SendData:
         self.pins = input_pins
         self.domain_url = url
         GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(self.pins, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(self.pins, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         self.cod_activ = {
             'L1': '',
             'L2': '',
@@ -20,17 +20,19 @@ class SendData:
         }
         #port = port #'/dev/ttyACM0'
         #baud = baud_rate #9600
-        self.serial = serial.Serial(port, baud_rate)
+        #self.serial = serial.Serial(port, baud_rate)
         self.barcode_data = {
             'id_linie': '',
             'cod_placa': ''
         }
-        self.displayL1 = I2C_LCD_driver.lcd()
-        self.displayL1.lcd_clear()
+        #self.displayL1 = I2C_LCD_driver.lcd()
+        #self.displayL1.lcd_clear()
         self.f = open("log.txt", "a")
 
     def readSensorInput(self, input_pin):
-        if not GPIO.input(input_pin):
+        #time.sleep(0.05)
+        if GPIO.input(input_pin):
+            time.sleep(1)
             return "obiect"
         else:
             #time.sleep(0.5)
@@ -61,8 +63,8 @@ class SendData:
     
     def sendDataToWeb(self):
         try:
-            if(self.serial.inWaiting()>0):
-                self.readBarcode()
+            #if(self.serial.inWaiting()>0):
+                #self.readBarcode()
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 t1 = executor.submit(self.readSensorInput, self.pins[0])
@@ -72,17 +74,17 @@ class SendData:
             sending_data = {
                 'L1': {
                     'prezenta_obiect': t1.result(),
-                    'cod_placa': self.cod_activ['L1'],
+                    'cod_placa': '0001',#self.cod_activ['L1'],
                     'id_linie': '1'
                 },
                 'L2': {
                     'prezenta_obiect': t2.result(),
-                    'cod_placa': self.cod_activ['L2'],
+                    'cod_placa': '002',#self.cod_activ['L2'],
                     'id_linie': '2'
-                } 
+                }, 
                 'L3': {
                     'prezenta_obiect': t3.result(),
-                    'cod_placa': self.cod_activ['L3'],
+                    'cod_placa': '003',#self.cod_activ['L3'],
                     'id_linie': '3'
                 } 
             }
@@ -91,35 +93,36 @@ class SendData:
             #print(self.cod_activ)
 
             #self.displayL1.lcd_clear()
-            self.displayL1.lcd_display_string("Linia 1", 1, 0)
-            self.displayL1.lcd_display_string(sending_data['L1']['cod_placa'], 2, 0)
-            self.displayL1.lcd_clear()
+            #self.displayL1.lcd_display_string("Linia 1", 1, 0)
+            #self.displayL1.lcd_display_string(sending_data['L1']['cod_placa'], 2, 0)
+            #self.displayL1.lcd_clear()
             #time.sleep(1)
             for i in sending_data:          
                 if sending_data[i]['cod_placa'] != '':
-                    self.f.write(datetime.datetime.now + " --- " + sending_data[i])
+                    #self.f.write(datetime.datetime.now + " --- " + sending_data[i])
                     print(sending_data[i])
                     if sending_data[i]['prezenta_obiect'] == 'obiect': 
                         #print(sending_data[i])
                         url =  self.domain_url + sending_data[i]['id_linie'] + '&' + sending_data[i]['cod_placa']
                         print(url)
-                        self.f.write(datetime.datetime.now + " --- " + url)
-                        urllib.request.urlopen(url)
+                        #self.f.write(datetime.datetime.now + " --- " + url)
+                        #urllib.request.urlopen(url)
+                        time.sleep(5)
                 else:
-                    self.displayL1.lcd_clear()
-                    self.displayL1.lcd_display_string("scan barcode", 1, 0)
+                    #self.displayL1.lcd_clear()
+                    #self.displayL1.lcd_display_string("scan barcode", 1, 0)
                     print("scan barcode")
-                    self.f.write(datetime.datetime.now + " --- scan barcode")
+                    #self.f.write(datetime.datetime.now + " --- scan barcode")
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         wait_for_barcode_read = executor.submit(self.readBarcode)
-                    self.displayL1.lcd_clear()
+                    #self.displayL1.lcd_clear()
         except KeyboardInterrupt:
-            self.displayL1.lcd_clear()
+            #self.displayL1.lcd_clear()
             sys.exit(0)
             
                     
 def main():
-    x = SendData([11,12,13], '/dev/ttyACM0', 9600, 'http://192.168.10.80/insert_data/')
+    x = SendData([11,12,13], '/dev/ttyACM0', 9600, 'http://192.168.10.80/wave/insert_data/')
     while 1:
         x.sendDataToWeb()
 
