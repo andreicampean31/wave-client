@@ -3,16 +3,19 @@ import urllib.request
 
 class GetBarcode:
     def __init__(self, port, baud_rate):
-        self.scannerSerial = serial.Serial(port, baud_rate)
-        self.cod_activ = {
-            'L1': '',
-            'L2': '',
-            'L3': ''
-        }
-        self.barcode_data = {
-            'id_linie': '',
-            'cod_placa': ''
-        }
+        try:
+            self.scannerSerial = serial.Serial(port, baud_rate)
+            self.cod_activ = {
+                'L1': '',
+                'L2': '',
+                'L3': ''
+            }
+            self.barcode_data = {
+                'id_linie': '',
+                'cod_placa': ''
+            }
+        except:
+            print("connect scanner")
 
     def splitBarcode(self, barcode):
         i=5
@@ -37,10 +40,13 @@ class GetBarcode:
             self.cod_activ['L3'] = self.barcode_data['cod_placa']
 
     def inUseBarcodes(self):
-        if self.scannerSerial.inWaiting() > 0:
-            self.readBarcode()
-            #print(self.cod_activ)
-        return self.cod_activ
+        try:
+            if self.scannerSerial.inWaiting() > 0:
+                self.readBarcode()
+                #print(self.cod_activ)
+            return self.cod_activ
+        except:
+            print("connect Scanner")
         #else:
          #   return 0
 
@@ -48,17 +54,23 @@ class GetBarcode:
 
 class GetSensorInput:
     def __init__(self, port, baud_rate):
-        self.arduinoSerial = serial.Serial(port, baud_rate)
+        try:
+            self.arduinoSerial = serial.Serial(port, baud_rate)
+        except:
+            print("connect Arduino")
 
     def readSensorInput(self):
-        if self.arduinoSerial.inWaiting() > 0:
-            switchState_read = self.arduinoSerial.readline().rstrip().decode('utf-8')
-            #print(switchState_read)
-            return switchState_read
-            #if (switchState_read == '1'):
-             #   print('1')
-            #elif (switchState_read == '2'):
-             #   print('0')
+        try:
+            if self.arduinoSerial.inWaiting() > 0:
+                switchState_read = self.arduinoSerial.readline().rstrip().decode('utf-8')
+                #print(switchState_read)
+                return switchState_read
+                #if (switchState_read == '1'):
+                 #   print('1')
+                #elif (switchState_read == '2'):
+                 #   print('0')
+        except:
+            print("connect Arduino")
 
 class SendDataToWeb:
     def __init__(self, url):
