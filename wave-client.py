@@ -7,7 +7,9 @@ class GetBarcode:
         self.cod_activ = {
             'L1': '',
             'L2': '',
-            'L3': ''
+            'L3': '',
+            'L2A': '',
+            'L3A': ''
         }
         self.barcode_data = {
             'id_linie': '',
@@ -90,6 +92,24 @@ class SendDataToWeb:
                 urllib.request.urlopen(url)
             else:
                 print("Scan barcode for L3")
+        elif state == '4':
+            if barcodes['L2A'] != '':
+                url = self.domain_url + '4' + '&' + barcodes['L2A']
+                print(url)
+                print(barcodes)
+                print("placa pe L2A")
+                urllib.request.urlopen(url)
+            else:
+                print("Scan barcode for L2A")
+        elif state == '5':
+            if barcodes['L3A'] != '':
+                url = self.domain_url + '5' + '&' + barcodes['L3A']
+                print(url)
+                print(barcodes)
+                print("placa pe L3A")
+                urllib.request.urlopen(url)
+            else:
+                print("Scan barcode for L3A")
 
 def main():
     barcodeScanner = GetBarcode('/dev/ttyACM0', 9600)
