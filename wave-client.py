@@ -37,6 +37,10 @@ class GetBarcode:
             self.cod_activ['L2'] = self.barcode_data['cod_placa']
         elif self.barcode_data['id_linie'] == '3':
             self.cod_activ['L3'] = self.barcode_data['cod_placa']
+        elif self.barcode_data['id_linie'] == '4':
+            self.cod_activ['L2A'] = self.barcode_data['cod_placa']
+        elif self.barcode_data['id_linie'] == '5':
+            self.cod_activ['L3A'] = self.barcode_data['cod_placa']
 
     def inUseBarcodes(self):
         if self.scannerSerial.inWaiting() > 0:
@@ -54,7 +58,7 @@ class GetSensorInput:
     def readSensorInput(self):
         if self.arduinoSerial.inWaiting() > 0:
             switchState_read = self.arduinoSerial.readline().rstrip().decode('utf-8')
-            #print(switchState_read)
+            print(switchState_read)
             return switchState_read
 
 class SendDataToWeb:
@@ -92,7 +96,7 @@ class SendDataToWeb:
                 urllib.request.urlopen(url)
             else:
                 print("Scan barcode for L3")
-        elif state == '4':
+        elif state == '2A':
             if barcodes['L2A'] != '':
                 url = self.domain_url + '4' + '&' + barcodes['L2A']
                 print(url)
@@ -101,7 +105,7 @@ class SendDataToWeb:
                 urllib.request.urlopen(url)
             else:
                 print("Scan barcode for L2A")
-        elif state == '5':
+        elif state == '3A':
             if barcodes['L3A'] != '':
                 url = self.domain_url + '5' + '&' + barcodes['L3A']
                 print(url)
@@ -114,14 +118,12 @@ class SendDataToWeb:
 def main():
     barcodeScanner = GetBarcode('/dev/ttyACM0', 9600)
     actualState = GetSensorInput('/dev/ttyUSB0', 9600)
-    accessingWeb = SendDataToWeb('http://192.168.10.80/insert_data/')
+    accessingWeb = SendDataToWeb('http://192.168.0.140/wave/insert_data/')
 
     while 1:
-        first_run = 0
         activeBarcodes = barcodeScanner.inUseBarcodes()
         prezenta = actualState.readSensorInput()
         accessingWeb.sendData(prezenta, activeBarcodes)
-        #time.sleep(1)
 
 if __name__ == "__main__":
     main()

@@ -36,7 +36,7 @@ void pressedCallback(uint8_t pinIn)
   }
   else if(pinIn == 5){
     digitalWrite(ledL4, HIGH);
-    Serial.println("3A");
+    Serial.println("2A");
   }
   else if(pinIn == 6){
     digitalWrite(ledL5, HIGH);
@@ -80,8 +80,8 @@ void setup()
    senzorLinia1.setup(linia1, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
    senzorLinia2.setup(linia2, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
    senzorLinia3.setup(linia3, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
-   senzorLinia4.setup(linia3, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
-   senzorLinia5.setup(linia3, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
+   senzorLinia4.setup(linia4, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
+   senzorLinia5.setup(linia5, DEFAULT_INPUT_DEBOUNCE_DELAY, InputDebounce::PIM_EXT_PULL_UP_RES, 150);
 }
 
 void loop()
