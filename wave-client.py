@@ -3,7 +3,14 @@ import urllib.request
 
 class GetBarcode:
     def __init__(self, port, baud_rate):
-        self.scannerSerial = serial.Serial(port, baud_rate)
+        self.port = port
+        self.baud_rate = baud_rate
+
+        if not self.connect_scanner():
+            print("trying to connect to barcode scanner...")
+            while not self.connect_scanner():
+                pass
+        print("barcode scanner connected")
         self.cod_activ = {
             'L1': '',
             'L2': '',
@@ -15,21 +22,40 @@ class GetBarcode:
             'id_linie': '',
             'cod_placa': ''
         }
-
+    def connect_scanner(self):
+        try:
+            self.scannerSerial = serial.Serial(self.port, self.baud_rate)
+            return 1
+        except:
+            return 0
     def splitBarcode(self, barcode):
-        i=3
+        i=1
+        j=0
         cod_placa = ''
+        id_linie = ''
+        print(barcode)
         while i<len(barcode):
-            cod_placa = cod_placa + barcode[i]
+            if barcode[i] == '-':
+                j=1
+                i+=1
+
+            if not j:
+                id_linie += barcode[i]
+            else:
+                cod_placa = cod_placa + barcode[i]
             i+=1
         data = {
-            'id_linie': barcode[1],
+            'id_linie': id_linie,
             'cod_placa': cod_placa
         }
+        print(data)
         return data
 
     def readBarcode(self):
-        barcode_read = self.scannerSerial.readline().decode("utf-8").rstrip()
+        try:
+            barcode_read = self.scannerSerial.readline().decode("utf-8").rstrip()
+        except:
+            print("inavlid format")
         self.barcode_data = self.splitBarcode(barcode_read)
         if self.barcode_data['id_linie'] == '1':
             self.cod_activ['L1'] = self.barcode_data['cod_placa']
@@ -37,88 +63,106 @@ class GetBarcode:
             self.cod_activ['L2'] = self.barcode_data['cod_placa']
         elif self.barcode_data['id_linie'] == '3':
             self.cod_activ['L3'] = self.barcode_data['cod_placa']
-        elif self.barcode_data['id_linie'] == '4':
+        elif self.barcode_data['id_linie'] == '2A':
             self.cod_activ['L2A'] = self.barcode_data['cod_placa']
-        elif self.barcode_data['id_linie'] == '5':
+        elif self.barcode_data['id_linie'] == '3A':
             self.cod_activ['L3A'] = self.barcode_data['cod_placa']
 
     def inUseBarcodes(self):
-        if self.scannerSerial.inWaiting() > 0:
-            self.readBarcode()
-            #print(self.cod_activ)
-        return self.cod_activ
+        try:
+            if self.scannerSerial.inWaiting() > 0:
+                self.readBarcode()
+                print(self.cod_activ)
+            return self.cod_activ
+        except:
+            print("scanner deconnected")
+            if self.connect_scanner():
+                print("scanner reconnected")
+            return self.cod_activ
+
 
 
 
 class GetSensorInput:
     def __init__(self, port, baud_rate):
-        self.arduinoSerial = serial.Serial(port, baud_rate)
+        self.port = port
+        self.baud_rate = baud_rate
+        if not self.connect_to_arduino():
+            print("trying to connect to arduino...")
+            while not self.connect_to_arduino():
+                pass
+        print("arduino connected")
 
+    def connect_to_arduino(self):
+        try:
+            self.arduinoSerial = serial.Serial(self.port, self.baud_rate)
+            return 1
+        except:
+            return 0
 
     def readSensorInput(self):
-        if self.arduinoSerial.inWaiting() > 0:
-            switchState_read = self.arduinoSerial.readline().rstrip().decode('utf-8')
-            print(switchState_read)
-            return switchState_read
+        try:
+            if self.arduinoSerial.inWaiting() > 0:
+                switchState_read = self.arduinoSerial.readline().rstrip().decode('utf-8')
+                print(switchState_read)
+                return switchState_read
+        except:
+            print("arduino deconnected")
+            print("trying to reconnect to arduino ...")
+            while not self.connect_to_arduino():
+                pass
+            print("arduino reconnected")
 
 class SendDataToWeb:
     def __init__(self, url):
         self.domain_url = url
+        self.buffer = []
         #self.barcode_missing = GetBarcode('/dev/ttyACM0', 9600)
+
+    def save_to_buffer(self, url):
+        self.buffer.append(url)
+        return 1
+
+    def upload_buffer(self):
+        if self.buffer != []:
+            for count,i in enumerate(self.buffer):
+                try:
+                    urllib.request.urlopen(i)
+                    del self.buffer[count]
+
+                except:
+                    pass
+            if self.buffer == []:
+                print("buffer uploaded and cleared")
+
+    def open_url(self, url):
+        try:
+            urllib.request.urlopen(url)
+        except urllib.error.URLError as err:
+            print(err)
+            if self.save_to_buffer(url):
+                print("saved to buffer")
 
     def sendData(self, state, barcodes):
         #print(state)
         #print(barcodes)
-        if state == '1':
-            if barcodes['L1'] != '':
-                url = self.domain_url + '1' + '&' + barcodes['L1']
+        self.upload_buffer()
+        if state != None:
+            linie = 'L'+ state
+
+            if barcodes[linie] != '':
+                url = self.domain_url + state + '&' + barcodes[linie]
                 print(url)
                 print(barcodes)
-                print("placa pe L1")
-                urllib.request.urlopen(url)
+                print("placa pe L" + state)
+                self.open_url(url)
             else:
-                print("Scan barcode for L1")
-        elif state == '2':
-            if barcodes['L2'] != '':
-                url = self.domain_url + '2' + '&' + barcodes['L2']
-                print(url)
-                print(barcodes)
-                print("placa pe L2")
-                urllib.request.urlopen(url)
-            else:
-                print("Scan barcode for L2")
-        elif state == '3':
-            if barcodes['L3'] != '':
-                url = self.domain_url + '3' + '&' + barcodes['L3']
-                print(url)
-                print(barcodes)
-                print("placa pe L3")
-                urllib.request.urlopen(url)
-            else:
-                print("Scan barcode for L3")
-        elif state == '2A':
-            if barcodes['L2A'] != '':
-                url = self.domain_url + '4' + '&' + barcodes['L2A']
-                print(url)
-                print(barcodes)
-                print("placa pe L2A")
-                urllib.request.urlopen(url)
-            else:
-                print("Scan barcode for L2A")
-        elif state == '3A':
-            if barcodes['L3A'] != '':
-                url = self.domain_url + '5' + '&' + barcodes['L3A']
-                print(url)
-                print(barcodes)
-                print("placa pe L3A")
-                urllib.request.urlopen(url)
-            else:
-                print("Scan barcode for L3A")
+                print("Scan barcode for " + linie)
 
 def main():
-    barcodeScanner = GetBarcode('/dev/ttyACM0', 9600)
-    actualState = GetSensorInput('/dev/ttyUSB0', 9600)
-    accessingWeb = SendDataToWeb('http://192.168.0.140/wave/insert_data/')
+    barcodeScanner = GetBarcode('/dev/cu.usbmodemR4319__1', 9600)
+    actualState = GetSensorInput('/dev/cu.usbserial-A50285BI', 9600)
+    accessingWeb = SendDataToWeb('http://192.168.1.9:80/wave/insert_data/')
 
     while 1:
         activeBarcodes = barcodeScanner.inUseBarcodes()
