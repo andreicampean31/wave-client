@@ -62,13 +62,14 @@ for line in output.stdout:
 
 f = open("/etc/udev/rules.d/10-usb-serial.rules", "w")
 
-f.write('SUBSYSTEM=="tty", ATTRS{idProduct}=="6001", ATTRS{idVendor}=="0403", SYMLINK+="ttyUSB_ARD\nSUBSYSTEM=="tty", ATTRS{idProduct}=="'+idProduct.decode("utf-8")+'", ATTRS{idVendor}=="'+idVendor.decode("utf-8")+'", SYMLINK+="ttyACM_BARCODE"')
+f.write('SUBSYSTEM=="tty", ATTRS{idProduct}=="6001", ATTRS{idVendor}=="0403", SYMLINK+="ttyUSB_ARD"\nSUBSYSTEM=="tty", ATTRS{idProduct}=="'+idProduct.decode("utf-8")+'", ATTRS{idVendor}=="'+idVendor.decode("utf-8")+'", SYMLINK+="ttyACM_BARCODE"')
 
 f.close()
 
 try:
 	cmd.Popen("udevadm trigger", shell=True)
 	cmd.Popen("ls -l /dev/ttyACM*", shell=True)
+	cmd.Popen("ls -l /dev/ttyUSB*", shell=True)
 	print("Scanner asociat")
 except:
 	print("Asociere esuata")
