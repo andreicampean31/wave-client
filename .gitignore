@@ -126,3 +126,4 @@ dmypy.json
 .idea/inspectionProfiles/
 
 .idea/
+/.DS_Store
